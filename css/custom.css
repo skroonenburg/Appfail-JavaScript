@@ -1,0 +1,31 @@
+body {
+  padding-top: 1.5em;
+}
+
+#output {
+  margin: 20px 0 0 0;
+}
+#output > div {
+  padding: 20px 0 20px 50px;
+  margin: 0 0 10px 0;
+  border-bottom: 1px solid #EEE;
+  position: relative;
+}
+#output > div:before {
+  content: attr(data-cnt);
+  position: absolute;
+  left: 0px;
+  top: 25px;
+  font-size: 46px;
+  opacity: 0.25;
+  color: red;
+}
+#output > div:first-child {
+  border-top: 1px solid #EEE;
+}
+#output div div {
+  opacity: 0.3;
+}
+#output .hasValue {
+  opacity: 1;
+}
