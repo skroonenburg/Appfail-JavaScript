@@ -6,9 +6,11 @@ Appfail JavaScript Reporting Module
 
 Documentation
 ==================
+
 **There are only two public methods available**
-`appfail.catchManual(e)` use with a `try {} catch(e) {}`
-`appfail.processQueue` for manually sending the queue of errors
+
+- `appfail.catchManual(e)` use with a `try {} catch(e) {}`
+- `appfail.processQueue()` for manually sending the queue of errors
 
 Links & Resources
 ==================
