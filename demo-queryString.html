@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="css/custom.css">
 </head>
 
-<body id="siteRoot">
+<body>
 
   <div class="container">
   
@@ -25,17 +25,20 @@
 
     <hr>
 
-    <ul>
-      <li>
-        <a href="demo-queryString.html">Query string configuration</a>
-      </li>
-      <li>
-        <a href="demo-config.html">JSON object configuration</a>
-      </li>
-      <li>
-        <a href="demo-onBeforeStore.html"><code>onBeforeStore</code> event</a>
-      </li>
-    </ul>
+    <a href="index.html">
+      &lt; Back
+    </a>
+
+    <br /><br /><br />
+
+    <pre>
+&lt;script src="appfail-reporting.js?slug=abc123"&gt;</script>
+</pre>
+
+    <p>
+      <button id="error0" class="btn">Trigger Native Error</button>
+      <button id="error1" class="btn">Catch(e)</button>
+    </p>
 
     <div id="output">
       <!-- test app errors are exported here -->
@@ -44,7 +47,7 @@
   </div>
 
   <script src="js/jquery.min.js"></script>
-  <script src="appfail-reporting.js?slug=1234567890"></script>
+  <script src="appfail-reporting.js?slug=abc123"></script>
   <script src="js/custom.js"></script>
   
 </body>

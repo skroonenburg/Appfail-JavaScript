@@ -7,6 +7,15 @@ Appfail JavaScript Reporting Module
 Documentation
 ==================
 
+**Settings that can be configured, and their defaults:**
+```
+appfail.configure({
+	slug: null, 			// your app slug
+	processInterval: 30, 	// how often the errors should be sent to the server (try not to do DDoS it!)
+	onBeforeStore: null		// function to parse the report values before it's stored or sent to the server
+});
+```
+
 **There are only two public methods available**
 
 - `appfail.catchManual(e)` use with a `try {} catch(e) {}`

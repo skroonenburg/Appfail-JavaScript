@@ -1,12 +1,17 @@
-/*global console, tempTestingFunction*/
+/*global appfail, console, tempTestingFunction*/
 
-var appfail = (function() {
+if (!appfail) {
+   var appfail = {};
+}
+
+appfail.reporting = (function() {
 
 	"use strict";
 
 	var defaults = {
 		slug: null,
-		processInterval: 30
+		processInterval: 30,
+		onBeforeStore: null
 	};
 	var report = {
 		ExceptionType: "",
@@ -29,6 +34,8 @@ var appfail = (function() {
 	var settings = {};
 	var messageQueue = [];
 	var processInterval;
+	var hasOfflineEvents = ("ononline" in window && "onoffline" in window) ? true: false;
+	var hasOnlineBool = (typeof navigator.onLine === "boolean") ? true : false;
 
 	// clone a JSON object
 	var cloneObject = function(obj) {
@@ -97,9 +104,17 @@ var appfail = (function() {
 		newReport.RelativeUrl = document.location.pathname;
 		newReport.ReferrerUrl = document.referrer;
 
+		if (settings.onBeforeStore) {
+		   settings.onBeforeStore(newReport);
+		}
+		
 		messageQueue.push(newReport);
 
 		tempTestingFunction(newReport);
+	};
+
+	var catchRequest = function(e) {
+		// do nothing
 	};
 
 	var catchManual = function(e) {
@@ -115,6 +130,10 @@ var appfail = (function() {
 		newReport.RelativeUrl = document.location.pathname;
 		newReport.ReferrerUrl = document.referrer;
 
+		if (settings.onBeforeStore) {
+		   settings.onBeforeStore(newReport);
+		}
+
 		messageQueue.push(newReport);
 
 		tempTestingFunction(newReport);
@@ -129,6 +148,10 @@ var appfail = (function() {
 	};
 
 	var loadOptions = function() {
+		if (appfail.config) {
+		   settings = merge(defaults,appfail.config);
+		   return;
+		}
 		var scripts = document.getElementsByTagName("script");
 		var thisScript;
 		for (var i = 0, len = scripts.length; i < len; i++) {
@@ -158,12 +181,19 @@ var appfail = (function() {
 			}
 			return;
 		}
-		attachListeners();
+		attachListeners();		
 	})();
+
+	var runTests = function() {
+		console.log("hasOnlineBool: ",hasOnlineBool);
+		console.log("hasOfflineEvents: ",hasOfflineEvents);
+	};
 
 	return {
 		catchManual: catchManual,
-		processQueue: processQueue
+		catchRequest: catchRequest,
+		processQueue: processQueue,
+		runTests: runTests
 	};
 
 })();
