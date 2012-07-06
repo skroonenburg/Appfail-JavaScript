@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="css/custom.css">
 </head>
 
-<body id="siteRoot">
+<body>
 
   <div class="container">
   
@@ -25,17 +25,26 @@
 
     <hr>
 
-    <ul>
-      <li>
-        <a href="demo-queryString.html">Query string configuration</a>
-      </li>
-      <li>
-        <a href="demo-config.html">JSON object configuration</a>
-      </li>
-      <li>
-        <a href="demo-onBeforeStore.html"><code>onBeforeStore</code> event</a>
-      </li>
-    </ul>
+    <a href="index.html">
+      &lt; Back
+    </a>
+
+    <br /><br /><br />
+
+    <p>
+      A function is exposed to parse data before it is stored. This is so you can remove sensitive POST data etc. for security. 
+    </p>
+
+    <pre>
+onBeforeStore: function(report) {
+  report.ExceptionType = "Uh-oh Spaghetti-oh";
+  report.StackTrace = "Uh-oh Spaghetti-oh";
+}</pre>
+
+    <p>
+      <button id="error0" class="btn">Trigger Native Error</button>
+      <button id="error1" class="btn">Catch(e)</button>
+    </p>
 
     <div id="output">
       <!-- test app errors are exported here -->
@@ -44,7 +53,17 @@
   </div>
 
   <script src="js/jquery.min.js"></script>
-  <script src="appfail-reporting.js?slug=1234567890"></script>
+  <script>
+    if (!appfail) { var appfail = {}; }
+    appfail.config = {
+      slug: "wu1h198fh812f1f1",
+      onBeforeStore: function(report) {
+        report.ExceptionType = "Uh-oh Spaghetti-oh";
+        report.StackTrace = "Uh-oh Spaghetti-oh";
+      }
+    };
+  </script>
+  <script src="appfail-reporting.js"></script>
   <script src="js/custom.js"></script>
   
 </body>

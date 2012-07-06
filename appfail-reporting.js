@@ -104,6 +104,10 @@ appfail.reporting = (function() {
 		newReport.RelativeUrl = document.location.pathname;
 		newReport.ReferrerUrl = document.referrer;
 
+		if (settings.onBeforeStore) {
+		   settings.onBeforeStore(newReport);
+		}
+		
 		messageQueue.push(newReport);
 
 		tempTestingFunction(newReport);
@@ -144,10 +148,10 @@ appfail.reporting = (function() {
 	};
 
 	var loadOptions = function() {
-				if (appfail.config) {
-				   settings = merge(defaults,appfail.config);
-				   return;
-				}
+		if (appfail.config) {
+		   settings = merge(defaults,appfail.config);
+		   return;
+		}
 		var scripts = document.getElementsByTagName("script");
 		var thisScript;
 		for (var i = 0, len = scripts.length; i < len; i++) {
@@ -177,15 +181,19 @@ appfail.reporting = (function() {
 			}
 			return;
 		}
-		attachListeners();
-		// console.log("hasOnlineBool: ",hasOnlineBool);
-		// console.log("hasOfflineEvents: ",hasOfflineEvents);
+		attachListeners();		
 	})();
+
+	var runTests = function() {
+		console.log("hasOnlineBool: ",hasOnlineBool);
+		console.log("hasOfflineEvents: ",hasOfflineEvents);
+	};
 
 	return {
 		catchManual: catchManual,
 		catchRequest: catchRequest,
-		processQueue: processQueue
+		processQueue: processQueue,
+		runTests: runTests
 	};
 
 })();
