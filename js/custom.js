@@ -14,7 +14,7 @@ $(function() {
 		try {
 			blah();
 		} catch(e) {
-			appfail.catchManual(e);
+			appfail.reporting.catchManual(e);
 		}
 	});
 
