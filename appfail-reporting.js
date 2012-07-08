@@ -79,6 +79,48 @@ appfail.reporting = (function() {
 		}
 	};
 
+
+
+	// xhr intercept script
+	(function(XHR) {
+
+		var send = XHR.prototype.send;
+
+		XHR.prototype.send = function(data) {
+	        var self = this;
+	        var oldOnReadyStateChange;
+	        var onReadyStateChange = function() {
+	        	console.log(self);
+	        	console.log("readyState: ",self.readyState);
+	        	console.log("responseText: ",self.responseText);
+	        	console.log("status: ",self.status);
+	        	console.log("statusText: ",self.statusText);
+	        	if (document.location.protocol === "file:") {
+	        		printError("error probably occured because it's being run at the file:// level");
+	        	}
+	            if(oldOnReadyStateChange) {
+                	oldOnReadyStateChange();
+            	}
+	        }
+
+            if (this.addEventListener) {
+                this.addEventListener("readystatechange", onReadyStateChange, false);
+            } else {
+                oldOnReadyStateChange = this.onreadystatechange; 
+                this.onreadystatechange = onReadyStateChange;
+            }
+
+            try {
+	        	send.call(this,data);            	
+            } catch(e) {
+            	console.log("e: ",e);
+            }
+	    }
+
+	})(XMLHttpRequest);
+
+
+
 	var attachListeners = function() {
 
 		// attach error listener
@@ -122,10 +164,6 @@ appfail.reporting = (function() {
 		messageQueue.push(newReport);
 
 		tempTestingFunction(newReport);
-	};
-
-	var catchRequest = function(e) {
-		// do nothing
 	};
 
 	var catchManual = function(e) {
@@ -254,7 +292,6 @@ appfail.reporting = (function() {
 
 	return {
 		catchManual: catchManual,
-		catchRequest: catchRequest,
 		processQueue: processQueue,
 		storeQueue: storeQueue,
 		loadStoredErrors: loadStoredErrors,

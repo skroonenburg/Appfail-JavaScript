@@ -18,6 +18,12 @@ $(function() {
 		}
 	});
 
+	$("#error2").on("click", function() {
+		var req = new XMLHttpRequest();
+		req.open("POST", "non-existant-page", false);
+		req.send();
+	});
+
 	var cnt = 0;
 	
 	tempTestingFunction = function(obj) {
