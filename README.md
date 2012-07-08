@@ -17,12 +17,12 @@ appfail.configure({
 });
 ```
 
-**There following functions are exposed**
+**The following functions are exposed**
 
 - `appfail.reporting.catchManual(e)` use with a `try {} catch(e) {}`
 - `appfail.reporting.processQueue()` for manually sending the queue of errors
 - `appfail.reporting.storeQueue()` push the current `messageQueue` to `localStorage`
-- `appfail.reporting.loadStoredErrors()` restore the saved errors from `localStorage` to the internal `messageQueue`. **Note:** does not automatically run `processQueue`
+- `appfail.reporting.loadStoredErrors()` restore the saved errors from `localStorage` to the internal `messageQueue`. **Note:** This does not automatically run `processQueue`, and will need to be manually triggered.
 
 Links & Resources
 ==================
