@@ -37,7 +37,7 @@
 
     <pre>
 &lt;script&gt;
-  if (!appfail) { var appfail = {}; }
+  window.appfail = window.appfail || {};
   appfail.config = {
     slug: "abc123"
   };
@@ -58,7 +58,7 @@
 
   <script src="js/jquery.min.js"></script>
   <script>
-    if (!appfail) { var appfail = {}; }
+    window.appfail = window.appfail || {};
     appfail.config = {
       slug: "abc123"
     };

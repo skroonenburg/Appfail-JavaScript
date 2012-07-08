@@ -1,8 +1,7 @@
 /*global appfail, console, tempTestingFunction*/
 
-if (!appfail) {
-   var appfail = {};
-}
+// create appfail object unless already created by overlay script
+window.appfail = window.appfail || {};
 
 appfail.reporting = (function() {
 
@@ -10,7 +9,8 @@ appfail.reporting = (function() {
 
 	var defaults = {
 		slug: null,
-		processInterval: 30,
+		processInterval: 10,
+		daysToStore: 7,
 		onBeforeStore: null
 	};
 	var report = {
@@ -36,8 +36,10 @@ appfail.reporting = (function() {
 	var processInterval;
 	var hasOfflineEvents = ("ononline" in window && "onoffline" in window) ? true: false;
 	var hasOnlineBool = (typeof navigator.onLine === "boolean") ? true : false;
+	var hasJSON = ("JSON" in window) ? true : false;
+	var hasLocalStorage = ("localStorage" in window) ? true : false;
 
-	// clone a JSON object
+	// helper - clone a JSON object
 	var cloneObject = function(obj) {
 		var clone = {};
 		for (var i in obj) {
@@ -50,14 +52,15 @@ appfail.reporting = (function() {
 		return clone;
 	};
 
-	// merge two objects together, without using $.extend
+	// helper - merge two objects together, without using $.extend
 	var merge = function(obj1,obj2) {
 		var obj3 = {};
-		for (var attrname in obj1) { obj3[attrname] = obj1[attrname]; }
-		for (var attrname in obj2) { obj3[attrname] = obj2[attrname]; }
+		for (var attrOne in obj1) { obj3[attrOne] = obj1[attrOne]; }
+		for (var attrTwo in obj2) { obj3[attrTwo] = obj2[attrTwo]; }
 		return obj3;
 	};
 
+	// helper - cross browser add event listener
 	var addHandler = function(obj, evnt, handler) {
 		if (obj.addEventListener) {
 			obj.addEventListener(evnt.replace(/^on/, ''), handler, false);
@@ -79,7 +82,7 @@ appfail.reporting = (function() {
 	var attachListeners = function() {
 
 		// attach error listener
-		addHandler(window, 'onerror', function (msg, url, num) {
+		addHandler(window, "onerror", function (msg, url, num) {
 			handleError(msg,url,num);
 			return true;
 		});
@@ -89,7 +92,15 @@ appfail.reporting = (function() {
 			if (messageQueue.length) {
 				processQueue();
 			}
-		}, 10*1000);
+		}, settings.processInterval*1000);
+
+		if (hasOfflineEvents) {
+			addHandler(window, "ononline", function() {
+				console.log("came back online");
+				loadStoredErrors();
+				processQueue();
+			});
+		}
 
 	};
 
@@ -105,9 +116,9 @@ appfail.reporting = (function() {
 		newReport.ReferrerUrl = document.referrer;
 
 		if (settings.onBeforeStore) {
-		   settings.onBeforeStore(newReport);
+			settings.onBeforeStore(newReport);
 		}
-		
+
 		messageQueue.push(newReport);
 
 		tempTestingFunction(newReport);
@@ -131,7 +142,7 @@ appfail.reporting = (function() {
 		newReport.ReferrerUrl = document.referrer;
 
 		if (settings.onBeforeStore) {
-		   settings.onBeforeStore(newReport);
+			settings.onBeforeStore(newReport);
 		}
 
 		messageQueue.push(newReport);
@@ -141,16 +152,57 @@ appfail.reporting = (function() {
 	};
 
 	var processQueue = function() {
+		if (messageQueue.length && hasOnlineBool && !navigator.onLine) {
+			printError("No connection found, stored reports to localStorage");
+			storeQueue();
+			messageQueue = [];
+			return;
+		}
 		while (messageQueue.length) {
 			console.log("send to server", messageQueue.length + " items remain");
 			messageQueue.shift(); 
 		}
 	};
 
+	var storeQueue = function() {
+		if (hasJSON) {
+			var existingErrors = window.localStorage.getItem("appfail-errors");
+			if (existingErrors !== "" && existingErrors !== null) {
+				var errorArray = JSON.parse(existingErrors);
+				for (var i = 0, len = errorArray.length; i < len; i++) {
+					messageQueue.push(errorArray[i]);
+				}
+			}
+			window.localStorage.setItem("appfail-errors", JSON.stringify(messageQueue));
+		}
+	};
+
+	var loadStoredErrors = function() {
+		var storedObj;
+		var stored = window.localStorage.getItem("appfail-errors");
+		if (stored === "" || stored === null) {
+			return;
+		}
+		storedObj = JSON.parse(stored);
+		var now = +new Date();
+		var day = 86400000;
+		var gap = settings.daysToStore * day;
+		var cleanedObject = [];
+		for (var i = 0, len = storedObj.length; i < len; i++) {
+			if (now - gap > storedObj[i].OccurrenceTimeUtc) {
+				printError("Dropping an old error");
+			} else {
+				cleanedObject.push(storedObj[i]);
+			}
+		}
+		messageQueue = cleanedObject;
+		window.localStorage.removeItem("appfail-errors");
+	};
+
 	var loadOptions = function() {
 		if (appfail.config) {
-		   settings = merge(defaults,appfail.config);
-		   return;
+			settings = merge(defaults,appfail.config);
+			return;
 		}
 		var scripts = document.getElementsByTagName("script");
 		var thisScript;
@@ -173,27 +225,39 @@ appfail.reporting = (function() {
 		settings = merge(defaults,queryObj);
 	};
 
+	// IIFE function
 	var init = (function() {
 		loadOptions();
 		if (!settings.slug) {
-			if (console && console.error) {
-				console.error("AppFail: No application slug was found.");
-			}
+			printError("No application slug was found.");
 			return;
 		}
-		attachListeners();		
+		if (hasOnlineBool && navigator.onLine) {
+			loadStoredErrors();			
+		}
+		attachListeners();
 	})();
 
+	var printError = function(str) {
+		if (console && console.error) {
+			console.error("appfail: " + str);
+		}
+	};
+
+	// development only
 	var runTests = function() {
 		console.log("hasOnlineBool: ",hasOnlineBool);
 		console.log("hasOfflineEvents: ",hasOfflineEvents);
+		console.log("hasJSON: ",hasJSON);
+		console.log("hasLocalStorage: ",hasLocalStorage);
 	};
 
 	return {
 		catchManual: catchManual,
 		catchRequest: catchRequest,
 		processQueue: processQueue,
-		runTests: runTests
+		storeQueue: storeQueue,
+		runTests: runTests // development only
 	};
 
 })();
