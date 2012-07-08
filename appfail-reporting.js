@@ -257,6 +257,7 @@ appfail.reporting = (function() {
 		catchRequest: catchRequest,
 		processQueue: processQueue,
 		storeQueue: storeQueue,
+		loadStoredErrors: loadStoredErrors,
 		runTests: runTests // development only
 	};
 
