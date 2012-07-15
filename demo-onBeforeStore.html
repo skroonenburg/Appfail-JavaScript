@@ -4,67 +4,67 @@
 <!--[if IE 8]>    <html class="no-js ie8 oldie" lang="en"> <![endif]-->
 <!--[if gt IE 8]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
 <head>
-  <meta charset="utf-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-  <title>appfail-reporting.js</title>
-  <meta name="description" content="">
-  <meta name="author" content="">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <link rel="stylesheet" href="css/bootstrap.min.css">
-  <link rel="stylesheet" href="css/custom.css">
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+	<title>appfail-reporting.js</title>
+	<meta name="description" content="">
+	<meta name="author" content="">
+	<meta name="viewport" content="width=device-width,initial-scale=1">
+	<link rel="stylesheet" href="css/bootstrap.min.css">
+	<link rel="stylesheet" href="css/custom.css">
 </head>
 
 <body>
 
-  <div class="container">
-  
-    <h1>
-      appfail-reporting.js
-      <small>Testing JavaScript Error Handling</small>
-    </h1>
+	<div class="container">
+	
+		<h1>
+			appfail-reporting.js
+			<small>Testing JavaScript Error Handling</small>
+		</h1>
 
-    <hr>
+		<hr>
 
-    <a href="index.html">
-      &lt; Back
-    </a>
+		<a href="index.html">
+			&lt; Back
+		</a>
 
-    <br /><br /><br />
+		<br /><br /><br />
 
-    <p>
-      A function is exposed to parse data before it is stored. This is so you can remove sensitive POST data etc. for security. 
-    </p>
+		<p>
+			A function is exposed to parse data before it is stored. This is so you can remove sensitive POST data etc. for security. 
+		</p>
 
-    <pre>
+		<pre>
 onBeforeStore: function(report) {
-  report.ExceptionType = "Uh-oh Spaghetti-oh";
-  report.StackTrace = "Uh-oh Spaghetti-oh";
+	report.Exceptions[0].ExceptionType = "Uh-oh Spaghetti-oh";
+	report.Exceptions[0].StackTrace = "Uh-oh Spaghetti-oh";
 }</pre>
 
-    <p>
-      <button id="error0" class="btn">Trigger Native Error</button>
-      <button id="error1" class="btn">Catch(e)</button>
-    </p>
+		<p>
+			<button id="error0" class="btn">Trigger Native Error</button>
+			<button id="error1" class="btn">Catch(e)</button>
+		</p>
 
-    <div id="output">
-      <!-- test app errors are exported here -->
-    </div>
+		<div id="output">
+			<!-- test app errors are exported here -->
+		</div>
 
-  </div>
+	</div>
 
-  <script src="js/jquery.min.js"></script>
-  <script>
-    if (!appfail) { var appfail = {}; }
-    appfail.config = {
-      slug: "wu1h198fh812f1f1",
-      onBeforeStore: function(report) {
-        report.ExceptionType = "Uh-oh Spaghetti-oh";
-        report.StackTrace = "Uh-oh Spaghetti-oh";
-      }
-    };
-  </script>
-  <script src="appfail-reporting.js"></script>
-  <script src="js/custom.js"></script>
-  
+	<script src="js/jquery.min.js"></script>
+	<script>
+			window.appfail = window.appfail || {};
+			appfail.config = {
+				slug: "wu1h198fh812f1f1",
+				onBeforeStore: function(report) {
+					report.Exceptions[0].ExceptionType = "Uh-oh Spaghetti-oh";
+					report.Exceptions[0].StackTrace = "Uh-oh Spaghetti-oh";
+				}
+			};
+	</script>
+	<script src="appfail-reporting.js"></script>
+	<script src="js/custom.js"></script>
+	
 </body>
 </html>

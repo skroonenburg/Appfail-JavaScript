@@ -29,7 +29,7 @@ $(function() {
 	tempTestingFunction = function(obj) {
 		var output = "";
 		for (var prop in obj) {
-			var classStr = (obj[prop].length || obj[prop] > 0) ? 'hasValue' : '';
+			var classStr = (obj[prop] !== null && (obj[prop].length || obj[prop] > 0)) ? 'hasValue' : '';
 			output += '<div class="' + classStr + '">';
 			output += '<strong>' + prop + ':</strong> ' + obj[prop];
 			output += '</div>';

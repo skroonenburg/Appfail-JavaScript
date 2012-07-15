@@ -1,4 +1,5 @@
 /*global appfail, console, tempTestingFunction*/
+/*jshint bitwise:false*/
 
 // create appfail object unless already created by overlay script
 window.appfail = window.appfail || {};
@@ -14,22 +15,33 @@ appfail.reporting = (function() {
 		onBeforeStore: null
 	};
 	var report = {
-		ExceptionType: "",
-		StackTrace: "",
+		RequestUrl: "",
 		HttpVerb: "",
-		ReferrerUrl: "",
-		ExceptionMessage: "",
-		RelativeUrl: "",
-		ApplicationType: "",
-		OccurrenceTimeUtc: "",
-		User: "",
+		ReferrerUrl: document.referrer,
+		OccurrenceTimeUtc: null,
+		User: 'Anonymous',
 		PostValuePairs: [],
 		QueryValuePairs: [],
-		ServerVariable: [],
 		Cookies: [],
-		UniqueId: "",
-		UserAgent: "",
-		MachineName: ""
+		UniqueId: null,
+		UserAgent: navigator.userAgent,
+		HttpStatus: null,
+		Exceptions: [],
+		IsXHRFailure: false,
+		XHRResponseText: null
+	};
+	var exception = {
+		ExceptionType: "",
+		ExceptionMessage: "",
+		StackTrace: ""
+	};
+	var XHRException = {
+		Code: null,
+		Message: "",
+		Name: "",
+		ReadyState: "",
+		Status: "",
+		StatusText: ""
 	};
 	var settings = {};
 	var messageQueue = [];
@@ -41,7 +53,7 @@ appfail.reporting = (function() {
 
 	// helper - clone a JSON object
 	var cloneObject = function(obj) {
-		var clone = {};
+		var clone =  !obj ? null : (obj instanceof Array ? [] : {});
 		for (var i in obj) {
 			if(typeof(obj[i]) === "object") {
 				clone[i] = cloneObject(obj[i]);
@@ -79,7 +91,14 @@ appfail.reporting = (function() {
 		}
 	};
 
-
+	// helper - generate fake guid
+	// this is why we need jshint bitwise because of the bitwise operator in here
+	var guid = function() {
+		function S4() {
+			return (((1+Math.random())*0x10000)|0).toString(16).substring(1);
+		}
+		return (S4()+S4()+"-"+S4()+"-"+S4()+"-"+S4()+"-"+S4()+S4()+S4());
+	};
 
 	// xhr intercept script
 	(function(XHR) {
@@ -87,35 +106,42 @@ appfail.reporting = (function() {
 		var send = XHR.prototype.send;
 
 		XHR.prototype.send = function(data) {
-	        var self = this;
-	        var oldOnReadyStateChange;
-	        var onReadyStateChange = function() {
-	        	console.log(self);
-	        	console.log("readyState: ",self.readyState);
-	        	console.log("responseText: ",self.responseText);
-	        	console.log("status: ",self.status);
-	        	console.log("statusText: ",self.statusText);
-	        	if (document.location.protocol === "file:") {
-	        		printError("error probably occured because it's being run at the file:// level");
-	        	}
-	            if(oldOnReadyStateChange) {
-                	oldOnReadyStateChange();
-            	}
-	        }
+			var self = this;
+			var exposeData = data;
+			var oldOnReadyStateChange;
+			var onReadyStateChange = function() {
+				console.log(self);
+				// should only really call this if status is not 300? 200? 0? dunno.
+				// also, responseText is way too big if it's returning full page html
+				// so it was dropped for now
+				handleXHRError({
+					ReadyState: self.readyState,
+					Status: self.status,
+					StatusText: self.statusText
+				});
+				if(oldOnReadyStateChange) {
+					oldOnReadyStateChange();
+				}
+			};
 
-            if (this.addEventListener) {
-                this.addEventListener("readystatechange", onReadyStateChange, false);
-            } else {
-                oldOnReadyStateChange = this.onreadystatechange; 
-                this.onreadystatechange = onReadyStateChange;
-            }
+			if (this.addEventListener) {
+				this.addEventListener("readystatechange", onReadyStateChange, false);
+			} else {
+				oldOnReadyStateChange = this.onreadystatechange; 
+				this.onreadystatechange = onReadyStateChange;
+			}
 
-            try {
-	        	send.call(this,data);            	
-            } catch(e) {
-            	console.log("e: ",e);
-            }
-	    }
+			try {
+				send.call(this,data);
+			} catch(e) {
+				console.log(e);
+				handleXHRError({
+					Code: e.code,
+					Message: e.message,
+					Name: e.name
+				});
+			}
+		};
 
 	})(XMLHttpRequest);
 
@@ -138,7 +164,6 @@ appfail.reporting = (function() {
 
 		if (hasOfflineEvents) {
 			addHandler(window, "ononline", function() {
-				console.log("came back online");
 				loadStoredErrors();
 				processQueue();
 			});
@@ -147,14 +172,21 @@ appfail.reporting = (function() {
 	};
 
 	var handleError = function(msg, url, num) {
+		console.log(msg, url, num);
 		var newReport = cloneObject(report);
-		newReport.OccurrenceTimeUtc = (msg.timeStamp) ? msg.timeStamp : + new Date();
-		newReport.ExceptionMessage = (msg.message) ? msg.message : "";
+		newReport.RequestUrl = document.location.href;
+		newReport.OccurrenceTimeUtc = msg.timeStamp || +new Date();
+		newReport.UniqueId = guid();
+
+		var newException = cloneObject(exception);
+		newException.ExceptionMessage = msg.message;
+		newException.StackTrace = msg.filename + " --- line " + msg.lineno;
+		newReport.Exceptions = [];
+		newReport.Exceptions.push(newException);
 
 		// common
 		newReport.UserAgent = navigator.userAgent;
-		newReport.Cookies = document.cookie;
-		newReport.RelativeUrl = document.location.pathname;
+		newReport.Cookies = [];
 		newReport.ReferrerUrl = document.referrer;
 
 		if (settings.onBeforeStore) {
@@ -166,17 +198,45 @@ appfail.reporting = (function() {
 		tempTestingFunction(newReport);
 	};
 
-	var catchManual = function(e) {
+	var handleXHRError = function(params) {
+		console.log(params);
 		var newReport = cloneObject(report);
-		newReport.OccurrenceTimeUtc = + new Date();
-		newReport.ExceptionType = e.type;
-		newReport.ExceptionMessage = e.message;
-		newReport.StackTrace = (e.stack) ? e.stack : "";
+		newReport.Exceptions = [];
+		newReport.IsXHRFailure = true;
+		
+		var newException = cloneObject(XHRException);
+		newException = merge(newException,params);
+		newReport.Exceptions.push(newException);
+
+		//common
+		newReport.UserAgent = navigator.userAgent;
+		newReport.Cookies = [];
+		newReport.ReferrerUrl = document.referrer;
+
+		if (settings.onBeforeStore) {
+			settings.onBeforeStore(newReport);
+		}
+
+		messageQueue.push(newReport);
+	};
+
+	var catchManual = function(e) {
+		console.log(e);
+		var newReport = cloneObject(report);
+		newReport.RequestUrl = document.location.href;
+		newReport.OccurrenceTimeUtc = +new Date();
+		newReport.UniqueId = guid();
+
+		var newException = cloneObject(exception);
+		newException.StackTrace = e.stack || "";
+		newException.ExceptionType = e.type;
+		newException.ExceptionMessage = e.message;
+		newReport.Exceptions = [];
+		newReport.Exceptions.push(newException);
 
 		// common
 		newReport.UserAgent = navigator.userAgent;
-		newReport.Cookies = document.cookie;
-		newReport.RelativeUrl = document.location.pathname;
+		newReport.Cookies = [];
 		newReport.ReferrerUrl = document.referrer;
 
 		if (settings.onBeforeStore) {
@@ -196,9 +256,18 @@ appfail.reporting = (function() {
 			messageQueue = [];
 			return;
 		}
+		var toSend = {
+			Slug: 'Demo-App',
+			ModuleVersion: '1.0.0.0',
+			ApplicationType: 'Javascript',
+			FailOccurrences: []
+		};
+
 		while (messageQueue.length) {
-			console.log("send to server", messageQueue.length + " items remain");
-			messageQueue.shift(); 
+			var thisItem  = messageQueue.shift(); 
+			toSend.FailOccurrences.push(thisItem);
+			var img = new Image();
+			img.src = 'https://api.appfail.net/JsFail/v1?json=' + encodeURIComponent(JSON.stringify(toSend));
 		}
 	};
 
