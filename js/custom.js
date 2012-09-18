@@ -24,6 +24,17 @@ $(function() {
 		req.send();
 	});
 
+        $("#error3").on("click", function() {
+                var objToPopulate = {};
+		var req = new XMLHttpRequest();
+                req.onreadystatechange = function() { if (req.readyState == 4) { var errorFunc = setTimeout(function() { var readProp = objToPopulate.invalidProperty.property; }, 100); } };
+		req.open("POST", "non-existant-page", false);
+
+		req.send();
+
+                
+	});
+
 	var cnt = 0;
 	
 	tempTestingFunction = function(obj) {

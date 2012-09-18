@@ -17,14 +17,18 @@ appfail.reporting = (function () {
         return (S4() + S4() + "-" + S4() + "-" + S4() + "-" + S4() + "-" + S4() + S4() + S4());
     };
 
-    var urlOverride = "http://demo.appfail.net/testURL";
+    var urlOverride = null; //"http://demo.appfail.local/testURL";
+    var pageLoadTime = new Date();
+    var ignoreConnectionStatus = true;
 
     var defaults = {
         slug: null,
         processInterval: 10,
         daysToStore: 7,
-        onBeforeStore: null
+        onBeforeStore: null,
+        appfailApiRoot: 'http://api.appfail.local' //'https://api.appfail.net'
     };
+
     var report = {
         RequestUrl: "",
         HttpVerb: "",
@@ -62,7 +66,7 @@ appfail.reporting = (function () {
     var messageQueue = [];
     var processInterval;
     var hasOfflineEvents = ("ononline" in window && "onoffline" in window) ? true : false;
-    var hasOnlineBool = (typeof navigator.onLine === "boolean") ? true : false;
+    var hasOnlineBool = ignoreConnectionStatus ? false : (typeof navigator.onLine === "boolean") ? true : false;
     var hasJSON = ("JSON" in window) ? true : false;
     var hasLocalStorage = ("localStorage" in window) ? true : false;
 
@@ -184,12 +188,17 @@ appfail.reporting = (function () {
 
     };
 
+    var getCurrentTimeOnPage = function() {
+        return (new Date() - pageLoadTime);
+    }
+
     var handleError = function (msg, url, num) {
         console.log(msg, url, num);
         var newReport = cloneObject(report);
-        newReport.RequestUrl = urlOverride || +document.location.href;
+        newReport.RequestUrl = urlOverride ? urlOverride : document.location.href;
         newReport.OccurrenceTimeUtc = (msg && msg.timeStamp) ? toUtc(new Date(msg.timeStamp)).getTime() : nowUtc().getTime();
         newReport.UniqueId = guid();
+        newReport.TimeOnPage = getCurrentTimeOnPage();
 
         var newException = cloneObject(exception);
         newException.ExceptionMessage = msg.message;
@@ -208,19 +217,22 @@ appfail.reporting = (function () {
 
         messageQueue.push(newReport);
 
-        tempTestingFunction(newReport);
+        //tempTestingFunction(newReport);
     };
+
+
 
     var handleXHRError = function (params) {
         console.log(params);
         var newReport = cloneObject(report);
-        newReport.RequestUrl = urlOverride || +document.location.href;
+        newReport.RequestUrl = urlOverride ? urlOverride : document.location.href;
         newReport.XHRRequestUrl = "http://google.com/fakeurl"; // Put failed XHR url here
         newReport.Exceptions = [];
         newReport.IsXHRFailure = true;
         newReport.OccurrenceTimeUtc = nowUtc().getTime();
-        // newReport.HttpVerb = XHR HTTP VERB HERE 'GET' OR 'POST' etc
-        // newReport.HttpStatus = the failed XHR request status, eg 500
+        newReport.TimeOnPage = getCurrentTimeOnPage();
+        //newReport.HttpVerb = XHR HTTP VERB HERE 'GET' OR 'POST' etc
+        newReport.HttpStatus = params.Status;
 
         //common
         newReport.UserAgent = navigator.userAgent;
@@ -237,9 +249,10 @@ appfail.reporting = (function () {
     var catchManual = function (e) {
         console.log(e);
         var newReport = cloneObject(report);
-        newReport.RequestUrl = urlOverride || +document.location.href;
+        newReport.RequestUrl = urlOverride ? urlOverride : document.location.href;
         newReport.OccurrenceTimeUtc = nowUtc().getTime();
         newReport.UniqueId = guid();
+        newReport.TimeOnPage = getCurrentTimeOnPage();
 
         var newException = cloneObject(exception);
         newException.StackTrace = e.stack || "";
@@ -259,7 +272,7 @@ appfail.reporting = (function () {
 
         messageQueue.push(newReport);
 
-        tempTestingFunction(newReport);
+        //tempTestingFunction(newReport);
 
     };
 
@@ -271,7 +284,7 @@ appfail.reporting = (function () {
             return;
         }
         var toSend = {
-            Slug: 'Demo-App',
+            Slug: settings.slug,
             ModuleVersion: '1.0.0.0',
             ApplicationType: 'Javascript',
             FailOccurrences: []
@@ -280,9 +293,13 @@ appfail.reporting = (function () {
         while (messageQueue.length) {
             var thisItem = messageQueue.shift();
             toSend.FailOccurrences.push(thisItem);
-            var img = new Image();
-            img.src = 'https://api.appfail.net/JsFail/v1?json=' + encodeURIComponent(JSON.stringify(toSend));
+
         }
+
+        messageQueue.length = 0;
+
+        var img = new Image();
+        img.src = settings.appfailApiRoot + '/JsFail/v1?json=' + encodeURIComponent(JSON.stringify(toSend));
     };
 
     var storeQueue = function () {
