@@ -7,7 +7,7 @@ Installation
 ==================
 To begin reporting Javascript failures to appfail, add the following script tag into your page:
 ```
-<script type="text/javascript" src="https://s3.amazonaws.com/appfail-us/appfail.reporting.min.js?slug=abc123" />
+<script type="text/javascript" src="https://s3.amazonaws.com/appfail-us/appfail.reporting.min.js?slug=abc123"></script>
 ```
 
 Configuration
@@ -28,7 +28,7 @@ appfail.configure({
 **Query string**
 Each of these settings can be configured via the query string of the URL in the <script /> include.
 ```
-<script type="text/javascript" src="https://s3.amazonaws.com/appfail-us/appfail.reporting.min.js?slug=abc123" />
+<script type="text/javascript" src="https://s3.amazonaws.com/appfail-us/appfail.reporting.min.js?slug=abc123"></script>
 ```
 
 **The following functions are exposed**
