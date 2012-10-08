@@ -11,15 +11,18 @@ Documentation
 ```
 appfail.configure({
 	slug: null, 			// your app slug
-	processInterval: 30, 	// how often the errors should be sent to the server (try not to do DDoS it!)
+	processInterval: 10, 	// how often the errors should be sent to the server (try not to DDoS it!)
+	daysToStore: 7,			// number of days before stored errors are invalidated
 	onBeforeStore: null		// function to parse the report values before it's stored or sent to the server
 });
 ```
 
-**There are only two public methods available**
+**The following functions are exposed**
 
-- `appfail.catchManual(e)` use with a `try {} catch(e) {}`
-- `appfail.processQueue()` for manually sending the queue of errors
+- `appfail.reporting.catchManual(e)` use with a `try {} catch(e) {}`
+- `appfail.reporting.processQueue()` for manually sending the queue of errors
+- `appfail.reporting.storeQueue()` push the current `messageQueue` to `localStorage`
+- `appfail.reporting.loadStoredErrors()` restore the saved errors from `localStorage` to the internal `messageQueue`. **Note:** This does not automatically run `processQueue`, and will need to be manually triggered.
 
 Links & Resources
 ==================

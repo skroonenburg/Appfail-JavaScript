@@ -31,13 +31,17 @@
 
     <br /><br /><br />
 
-    <pre>
-&lt;script src="appfail-reporting.js?slug=abc123"&gt;</script>
-</pre>
+    <p>
+      Appfail captures failed AJAX requests too. How cool is that?
+    </p>
 
     <p>
-      <button id="error0" class="btn">Trigger Native Error</button>
-      <button id="error1" class="btn">Catch(e)</button>
+      Check your console, this is still very much experimental.
+    </p>
+
+    <p>
+      <button id="error2" class="btn">AJAX Call</button>
+      <button id="error3" class="btn">AJAX Call That Causes Javascript Error</button>
     </p>
 
     <div id="output">
@@ -47,7 +51,13 @@
   </div>
 
   <script src="js/jquery.min.js"></script>
-  <script src="appfail.reporting.min.js?slug=Demo-App"></script>
+  <script>
+    window.appfail = window.appfail || {};
+    appfail.config = {
+      slug: "Demo-App"
+    };
+  </script>
+  <script src="appfail-reporting.js"></script>
   <script src="js/custom.js"></script>
   
 </body>
