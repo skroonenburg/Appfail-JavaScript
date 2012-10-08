@@ -25,7 +25,7 @@ appfail.configure({
 });
 ```
 
-** Query string **
+**Query string**
 Each of these settings can be configured via the query string of the URL in the <script /> include.
 ```
 <script type="text/javascript" src="https://s3.amazonaws.com/appfail-us/appfail.reporting.min.js?slug=abc123" />
