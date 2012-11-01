@@ -10,6 +10,13 @@ To begin reporting Javascript failures to appfail, add the following script tag 
 <script type="text/javascript" src="https://s3.amazonaws.com/appfail-us/appfail.reporting.min.js?slug=abc123"></script>
 ```
 
+Testing
+==================
+OK, so you've plugged in the reporting script, but your not seeing any failures in Appfail. Have you written perfect Javascript code, or is something going wrong!?
+
+You can fire a 'test' exception at appfail from your page, by adding the following value to your page's query string:
+http://myurl.com/somepage?appfail-report-test-exception=1
+
 Configuration
 ==================
 
