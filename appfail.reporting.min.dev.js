@@ -1,4 +1,4 @@
-/*global appfail, console, tempTestingFunction*/
+/*global appfail, console*/
 /*jshint bitwise:false*/
 
 // create appfail object unless already created by overlay script
@@ -20,7 +20,7 @@ appfail.reporting = (function () {
     // Define default settings for appfail.reporting.js
     var defaults = {
         slug: null,
-        processInterval: 10,
+        processInterval: 4,
         daysToStore: 7,
         onBeforeStore: null,
         appfailApiRoot: 'https://api.appfail.net'
@@ -65,11 +65,11 @@ appfail.reporting = (function () {
     var ignoreConnectionStatus = false; // Browser connection status can be ignored to force reporting during testing
     var urlOverride = null; // Use a URL override for testing purposes, to override the reported failure URL
     var enableLogging = false;
-    
+
     /* Local Testing Setup */
     // ignoreConnectionStatus = true;
     // urlOverride = "http://demo.appfail.local/testURL"
-    
+
     var hasOnlineBool = ignoreConnectionStatus ? false : (typeof navigator.onLine === "boolean") ? true : false;
 
     // helper - deep clone a JSON object
@@ -88,16 +88,16 @@ appfail.reporting = (function () {
     // helper - merge two objects together, without using $.extend
     var merge = function (obj1, obj2) {
         var obj3 = {};
-        for (var attrOne in obj1) { obj3[attrOne] = obj1[attrOne]; }
-        for (var attrTwo in obj2) { obj3[attrTwo] = obj2[attrTwo]; }
+        for (var attrOne in obj1) { if (obj1.hasOwnProperty(attrOne)) { obj3[attrOne] = obj1[attrOne]; } }
+        for (var attrTwo in obj2) { if (obj2.hasOwnProperty(attrTwo)) { obj3[attrTwo] = obj2[attrTwo]; } }
         return obj3;
     };
 
-    var logToConsole = function(obj) {
-        if (enableLogging && typeof console == "object") {
-             console.log(obj);
+    var logToConsole = function (obj) {
+        if (enableLogging && typeof console === "object") {
+            console.log(obj);
         }
-    }
+    };
 
     // helper - cross browser add event listener
     var addHandler = function (obj, evnt, handler) {
@@ -125,21 +125,22 @@ appfail.reporting = (function () {
 
         XHR.prototype.send = function (data) {
             var self = this;
-            var exposeData = data;
             var oldOnReadyStateChange;
             var onReadyStateChange = function () {
 
                 if (self.readyState === 4) {
                     logToConsole(self);
-
+                    var appfailData = self.appfailData;
                     // should only really call this if status is not 300? 200? 0? dunno.
-                    // also, responseText is way too big if it's returning full page html
-                    // so it was dropped for now
-                    handleXHRError({
-                        ReadyState: self.readyState,
-                        Status: self.status,
-                        StatusText: self.statusText
-                    });
+                    if (self.status && self.status >= 400) {
+                        handleXHRError({
+                            ReadyState: self.readyState,
+                            Status: self.status,
+                            StatusText: self.statusText,
+                            Method: appfailData ? appfailData.method : null,
+                            Url: appfailData ? appfailData.url : null
+                        });
+                    }
                 }
 
                 if (oldOnReadyStateChange) {
@@ -154,16 +155,14 @@ appfail.reporting = (function () {
                 this.onreadystatechange = onReadyStateChange;
             }
 
-            try {
-                send.call(this, data);
-            } catch (e) {
-                logToConsole(e);
-                handleXHRError({
-                    Code: e.code,
-                    Message: e.message,
-                    Name: e.name
-                });
-            }
+            send.call(this, data);
+        };
+
+        var open = XHR.prototype.open;
+
+        XHR.prototype.open = function (method, url, async) {
+            this.appfailData = { method: method, url: url };
+            open.call(this, method, url, async);
         };
 
     })(XMLHttpRequest);
@@ -195,10 +194,24 @@ appfail.reporting = (function () {
     // Gets the time spent on the page since it loaded
     var getCurrentTimeOnPage = function() {
         return (new Date() - pageLoadTime);
-    }
+    };
 
-    var populateFailureOccurrenceReport = function(repObj)
-    {
+    var queryStringParams = {};
+    (function () {
+        var match,
+            pl     = /\+/g,  // Regex for replacing addition symbol with a space
+            search = /([^&=]+)=?([^&]*)/g,
+            decode = function (s) { return decodeURIComponent(s.replace(pl, " ")); },
+            query  = window.location.search.substring(1);
+
+        match = search.exec(query);
+        while (match) {
+           queryStringParams.push([[decode(match[1])],decode(match[2])]); 
+           match = search.exec(query);
+        }
+    })();
+
+    var populateFailureOccurrenceReport = function (repObj) {
         repObj.RequestUrl = urlOverride ? urlOverride : document.location.href;
 
         if (!repObj.OccurrenceTimeUtc) {
@@ -210,14 +223,15 @@ appfail.reporting = (function () {
         repObj.UserAgent = navigator.userAgent;
         repObj.Cookies = [];
         repObj.ReferrerUrl = document.referrer;
-    }
+        repObj.QueryValuePairs = queryStringParams;
+    };
 
     // Handles a window.onerror event
     var handleError = function (msg, url, num) {
         logToConsole(msg, url, num);
         var newReport = cloneObject(report);
         newReport.OccurrenceTimeUtc = (msg && msg.timeStamp) ? new Date(msg.timeStamp).getTime() : null;
-        
+
         var newException = cloneObject(exception);
         newException.ExceptionMessage = msg.message;
         newException.StackTrace = msg.filename + " --- line " + msg.lineno;
@@ -236,12 +250,18 @@ appfail.reporting = (function () {
     // Handles an XHR error
     var handleXHRError = function (params) {
         logToConsole(params);
-        var newReport = cloneObject(report);
-        newReport.XHRRequestUrl = "http://google.com/fakeurl"; // Put failed XHR url here
-        newReport.IsXHRFailure = true;
         
+        if (!params.Url) {
+            return;
+        }
+
+        var newReport = cloneObject(report);
+        newReport.XHRRequestUrl = params.Url; // Put failed XHR url here
+        newReport.IsXHRFailure = true;
+
         //newReport.HttpVerb = XHR HTTP VERB HERE 'GET' OR 'POST' etc
         newReport.HttpStatus = params.Status;
+        newReport.HttpVerb = params.Method;
 
         populateFailureOccurrenceReport(newReport);
 
@@ -368,8 +388,14 @@ appfail.reporting = (function () {
         settings = merge(defaults, queryObj);
     };
 
+    function getQueryStringParameterByName(name) {
+        var match = new RegExp('[?&]' + name + '=([^&]*)')
+                         .exec(window.location.search);
+        return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
+    }
+
     // IIFE function
-    var init = (function () {
+    (function () {
         loadOptions();
         if (!settings.slug) {
             printError("No application slug was found.");
@@ -379,6 +405,17 @@ appfail.reporting = (function () {
             loadStoredErrors();
         }
         attachListeners();
+
+        // should we send a test error?
+        if (getQueryStringParameterByName('appfail-report-test-exception')) {
+           try {
+               throw new Error('This is an Appfail test exception. Congratulations, your web-site is successfully reporting javascript errors to Appfail');
+           }
+           catch (e) {
+               // send this test error to Appfail
+               catchManual(e);
+           }
+        }
     })();
 
     var printError = function (str) {
