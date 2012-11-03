@@ -59,12 +59,16 @@ appfail.reporting = (function () {
     var messageQueue = [];
     var processInterval;
     var hasOfflineEvents = ("ononline" in window && "onoffline" in window) ? true : false;
-    var hasJSON = ("JSON" in window) ? true : false;
-    var hasLocalStorage = ("localStorage" in window) ? true : false;
+    function hasJSON() {
+        return "JSON" in window && window.JSON;
+    }
+    var hasLocalStorage = ("localStorage" in window && window.localStorage) ? true : false;
     var pageLoadTime = new Date();
     var ignoreConnectionStatus = false; // Browser connection status can be ignored to force reporting during testing
     var urlOverride = null; // Use a URL override for testing purposes, to override the reported failure URL
     var enableLogging = false;
+    var scriptfilename = 'appfail.reporting.min.js';
+    var json2Url = 'https://s3.amazonaws.com/appfail-us/json2.min.js';
 
     /* Local Testing Setup */
     // ignoreConnectionStatus = true;
@@ -196,7 +200,7 @@ appfail.reporting = (function () {
         return (new Date() - pageLoadTime);
     };
 
-    var queryStringParams = {};
+    var queryStringParams = [];
     (function () {
         var match,
             pl     = /\+/g,  // Regex for replacing addition symbol with a space
@@ -206,7 +210,7 @@ appfail.reporting = (function () {
 
         match = search.exec(query);
         while (match) {
-           queryStringParams.push([[decode(match[1])],decode(match[2])]); 
+           queryStringParams.push([decode(match[1]),decode(match[2])]); 
            match = search.exec(query);
         }
     })();
@@ -295,8 +299,12 @@ appfail.reporting = (function () {
     };
 
     var processQueue = function () {
-        if (messageQueue.length && hasOnlineBool && !navigator.onLine) {
-            printError("No connection found, stored reports to localStorage");
+        if (messageQueue.length && ( (hasOnlineBool && !navigator.onLine) || !hasJSON())) {
+            if (!hasJSON()) {
+                printError("JSON parser has not yet loaded. Stored failure reports to local storage.");
+            } else {
+                printError("No connection found, stored failure reports to local storage");
+            }
             storeQueue();
             messageQueue = [];
             return;
@@ -328,7 +336,7 @@ appfail.reporting = (function () {
     };
 
     var storeQueue = function () {
-        if (hasJSON) {
+        if (hasJSON() && hasLocalStorage) {
             var existingErrors = window.localStorage.getItem("appfail-errors");
             if (existingErrors !== "" && existingErrors !== null) {
                 var errorArray = JSON.parse(existingErrors);
@@ -341,6 +349,11 @@ appfail.reporting = (function () {
     };
 
     var loadStoredErrors = function () {
+
+        if (!hasLocalStorage) {
+            return;
+        }
+
         var storedObj;
         var stored = window.localStorage.getItem("appfail-errors");
         if (stored === "" || stored === null) {
@@ -370,7 +383,7 @@ appfail.reporting = (function () {
         var scripts = document.getElementsByTagName("script");
         var thisScript;
         for (var i = 0, len = scripts.length; i < len; i++) {
-            if (scripts[i].src.indexOf("appfail.reporting.min.js") > -1) {
+            if (scripts[i].src.indexOf(scriptfilename) > -1) {
                 thisScript = scripts[i];
                 break;
             }
@@ -393,9 +406,20 @@ appfail.reporting = (function () {
                          .exec(window.location.search);
         return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
     }
-
+    function includeJson2() {
+        var script = document.createElement( 'script' );
+        script.type = 'text/javascript';
+        script.src = json2Url;
+        document.body.appendChild(script);
+    }
     // IIFE function
     (function () {
+        if (!hasJSON())
+        {
+            // include json2 for older browsers
+            includeJson2();
+        }
+
         loadOptions();
         if (!settings.slug) {
             printError("No application slug was found.");
@@ -428,7 +452,7 @@ appfail.reporting = (function () {
     var runTests = function () {
         logToConsole("hasOnlineBool: ", hasOnlineBool);
         logToConsole("hasOfflineEvents: ", hasOfflineEvents);
-        logToConsole("hasJSON: ", hasJSON);
+        logToConsole("hasJSON: ", hasJSON());
         logToConsole("hasLocalStorage: ", hasLocalStorage);
     };
 
