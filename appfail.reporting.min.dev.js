@@ -67,7 +67,7 @@ appfail.reporting = (function () {
     var ignoreConnectionStatus = false; // Browser connection status can be ignored to force reporting during testing
     var urlOverride = null; // Use a URL override for testing purposes, to override the reported failure URL
     var enableLogging = false;
-    var scriptfilename = 'appfail.reporting.min.js';
+    var scriptfilename = 'appfail.reporting.min.dev.js';
     var json2Url = 'https://s3.amazonaws.com/appfail-us/json2.min.js';
 
     /* Local Testing Setup */
